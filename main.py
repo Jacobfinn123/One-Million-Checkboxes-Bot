@@ -1,4 +1,4 @@
-import time, socketio, base64, requests
+import threading, time, socketio, base64, requests
 
 
 class BitSet:
@@ -30,36 +30,37 @@ class BitSet:
 sio = socketio.Client()
 fart = sio.connect('https://onemillioncheckboxes.com/', transports='websocket')
 
-headers = {
-    'Accept': '*/*',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Pragma': 'no-cache',
-    'Referer': 'https://onemillioncheckboxes.com/',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'same-origin',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-    'sec-ch-ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-}
 
-response = requests.get('https://onemillioncheckboxes.com/api/initial-state', headers=headers)
-state = BitSet(base64.b64decode(response.json()['full_state']))
+class Bot:
+	def __init__(self):
+		self.state = None
+		threading.Thread(target=self.update_state).start()
+		self.check_them_boxes()
+
+	def update_state(self):
+		headers = { 'Accept': '*/*', 'Accept-Language': 'en-US,en;q=0.9', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive', 'Pragma': 'no-cache', 'Referer': 'https://onemillioncheckboxes.com/', 'Sec-Fetch-Dest': 'empty', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-origin', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36', 'sec-ch-ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"', 'sec-ch-ua-mobile': '?0', 'sec-ch-ua-platform': '"Windows"'}
+
+		while True:
+			response = requests.get('https://onemillioncheckboxes.com/api/initial-state', headers=headers)
+			self.state = BitSet(base64.b64decode(response.json()['full_state']))
+			time.sleep(5)
+
+	def check_them_boxes(self):
+		while True:
+			if not self.state:
+				continue
+
+			start = time.perf_counter()
+			for i in range(1, 1000000):
+				if self.state.get(i):
+					continue
+				try:
+					sio.emit(event="toggle_bit", data={"index": i})
+				except Exception as e:
+					print(i)
+
+				time.sleep(0.01)
+			print(time.perf_counter() - start)
 
 
-while True:
-	start = time.perf_counter()
-	for i in range(1, 1000000):
-		if state.get(i):
-			continue
-		try:
-			sio.emit(event="toggle_bit", data={"index": i})
-		except Exception as e:
-			print(i)
-
-		time.sleep(0.01)
-
-	print(time.perf_counter() - start)
+Bot()
