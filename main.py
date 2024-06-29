@@ -53,12 +53,13 @@ state = BitSet(base64.b64decode(response.json()['full_state']))
 while True:
 	start = time.perf_counter()
 	for i in range(1, 1000000):
-		if not state.get(i):
-			try:
-				sio.emit(event="toggle_bit", data={"index": i})
-			except Exception as e:
-				print(i)
+		if state.get(i):
+			continue
+		try:
+			sio.emit(event="toggle_bit", data={"index": i})
+		except Exception as e:
+			print(i)
 
-			time.sleep(0.01)
+		time.sleep(0.01)
 
 	print(time.perf_counter() - start)
